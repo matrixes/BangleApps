@@ -1,0 +1,16 @@
+{ "id": "sillywalk",
+  "name": "Sillywalk clock",
+  "shortName":"Sillywalk clock",
+  "icon": "sillywalk.icon.png",
+  "version":"0.01",
+  "description": "A very silly (walk) clock",
+  "tags": "silly,walk,sillywalk,watchface,clock,clockface",
+  "type": "clock",
+  "supports" : ["BANGLEJS2"],
+  "storage": [
+    {"name":"sillywalk.app.js","url":"sillywalk.app.js"},
+    {"name":"sillywalk.img","url":"sillywalk.icon.js","evaluate":true}
+  ],
+  "readme":"README.md",
+  "screenshots": [{"url":"sillywalk.clock.png"}]
+}
