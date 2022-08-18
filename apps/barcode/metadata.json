@@ -1,16 +1,19 @@
-{ "id": "barcode",
-  "name": "Barcode clock",
-  "shortName":"Barcode clock",
-  "icon": "barcode.icon.png",
-  "version":"0.09",
+{
+  "data": [{"name": "barcode.settings.json"}],
   "description": "EAN-8 compatible barcode clock.",
-  "tags": "barcode,ean,ean-8,watchface,clock,clockface",
-  "type": "clock",
-  "supports" : ["BANGLEJS2"],
+  "icon": "barcode.icon.png",
+  "id": "barcode",
+  "name": "Barcode clock",
+  "readme":"README.md",
+  "screenshots": [{"url":"barcode.clock.png"}],
+  "shortName":"Barcode clock",
   "storage": [
     {"name":"barcode.app.js","url":"barcode.app.js"},
+    {"name":"barcode.settings.js","url":"barcode.settings.js"},
     {"name":"barcode.img","url":"barcode.icon.js","evaluate":true}
   ],
-  "readme":"README.md",
-  "screenshots": [{"url":"barcode.clock.png"}]
+  "supports" : ["BANGLEJS2"],
+  "tags": "barcode,ean,ean-8,watchface,clock,clockface",
+  "type": "clock",
+  "version":"0.10"
 }
