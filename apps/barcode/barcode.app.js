@@ -37,16 +37,17 @@ let rightBarsStartX = midBarOffsetX + checkBarWidth;
 let rightBarsStartY = upperTextBarRightOffsetY + textBarHeight;
 
 /* Utilities */
-let stepCount = require("Storage").readJSON("stepCount",1);
-if(stepCount === undefined) stepCount = 0;
+const FILE = "barcode.settings.json";
+var settings = Object.assign({
+    stepCount: 0,
+}, require('Storage').readJSON(FILE, true) || {});
+if(settings.stepCount === undefined) settings.stepCount = 0;
 let intCaster = num => Number(num);
 
 var drawTimeout;
 
 function renderWatch(l) {
     g.setFont("4x6",2);
-
-    // work out how to display the current time
 
     var d = new Date();
     var h = d.getHours(), m = d.getMinutes();
@@ -376,16 +377,16 @@ function calculateChecksum(digits) {
 }
 
 function storeStepCount() {
-    stepCount = Bangle.getStepCount();
-    require("Storage").writeJSON("stepCount",stepCount);
+    settings.stepCount = Bangle.getStepCount();
+    writeSettings();
 }
 
 function getStepCount() {
     let accumulatedSteps = Bangle.getStepCount();
-    if(accumulatedSteps <= stepCount) {
+    if(accumulatedSteps <= settings.stepCount) {
         return 0;
     }
-    return accumulatedSteps - stepCount;
+    return accumulatedSteps - settings.stepCount;
 }
 
 function resetAtMidnight() {
@@ -402,6 +403,10 @@ function resetAtMidnight() {
         storeStepCount();              //      <-- This is the function being called at midnight.
         resetAtMidnight();    //      Then, reset again next midnight.
     }, msToMidnight);
+}
+
+function writeSettings() {
+    require('Storage').writeJSON(FILE, settings);
 }
 
 resetAtMidnight();
