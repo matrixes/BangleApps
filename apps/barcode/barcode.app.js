@@ -37,9 +37,13 @@ let rightBarsStartX = midBarOffsetX + checkBarWidth;
 let rightBarsStartY = upperTextBarRightOffsetY + textBarHeight;
 
 /* Utilities */
-let stepCount = require("Storage").readJSON("stepCount",1);
-if(stepCount === undefined) stepCount = 0;
 let intCaster = num => Number(num);
+
+var settings = Object.assign({
+    // default values
+    stepCount: 123,
+}, require('Storage').readJSON("barcode.settings.json", true) || {});
+
 
 var drawTimeout;
 
@@ -376,16 +380,18 @@ function calculateChecksum(digits) {
 }
 
 function storeStepCount() {
-    stepCount = Bangle.getStepCount();
-    require("Storage").writeJSON("stepCount",stepCount);
+    accumulatedSteps = Bangle.getStepCount();
+    require("Storage").writeJSON("barcode.settings.json", {
+        stepCount: accumulatedSteps,
+    });
 }
 
 function getStepCount() {
     let accumulatedSteps = Bangle.getStepCount();
-    if(accumulatedSteps <= stepCount) {
+    if(accumulatedSteps <= settings.stepCount) {
         return 0;
     }
-    return accumulatedSteps - stepCount;
+    return accumulatedSteps - settings.stepCount;
 }
 
 function resetAtMidnight() {
