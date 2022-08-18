@@ -38,24 +38,41 @@ let rightBarsStartY = upperTextBarRightOffsetY + textBarHeight;
 
 /* Utilities */
 const FILE = "barcode.settings.json";
-var settings = Object.assign({
-    stepCount: 0,
+let settings = Object.assign({
+    lastBoot: 0,
+    bangleStepCount: 0,
+    intervalResetDays: 1,
+    intervalStepCount: 0,
+    resetIntervalStepCount: 0,
+    accumulatedBangleStepCount: 0,
+    resetAccumulatedBangleStepCount: 0,
+    totalStepCount: 0,
 }, require('Storage').readJSON(FILE, true) || {});
-if(settings.stepCount === undefined) settings.stepCount = 0;
+if(settings.lastBoot === undefined) settings.lastBoot = 0;
+if(settings.bangleStepCount === undefined) settings.bangleStepCount = 0;
+if(settings.intervalResetDays === undefined) settings.intervalResetDays = 1;
+
+if(settings.intervalStepCount === undefined) settings.intervalStepCount = 0;
+if(settings.resetIntervalStepCount === undefined) settings.intervalResetStepCount = 0;
+
+if(settings.accumulatedBangleStepCount === undefined) settings.accumulatedBangleStepCount = 0;
+if(settings.resetAccumulatedBangleStepCount === undefined) settings.resetAccumulatedStepCount = 0;
+
+if(settings.totalStepCount === undefined) settings.totalStepCount = 0;
 let intCaster = num => Number(num);
 
-var drawTimeout;
+let drawTimeout;
 
 function renderWatch(l) {
     g.setFont("4x6",2);
 
-    var d = new Date();
-    var h = d.getHours(), m = d.getMinutes();
-    var time = h + ":" + ("0"+m).substr(-2);
+    let d = new Date();
+    let h = d.getHours(), m = d.getMinutes();
+    let time = h + ":" + ("0"+m).substr(-2);
     //var month = ("0" + (d.getMonth()+1)).slice(-2);
-    var dayOfMonth = ('0' + d.getDate()).slice(-2);
-    var dayOfWeek = d.getDay() || 7;
-    var concatTime = ("0"+h).substr(-2) + ("0"+m).substr(-2) + dayOfMonth + dayOfWeek;
+    let dayOfMonth = ('0' + d.getDate()).slice(-2);
+    let dayOfWeek = d.getDay() || 7;
+    let concatTime = ("0"+h).substr(-2) + ("0"+m).substr(-2) + dayOfMonth + dayOfWeek;
 
     const chars = String(concatTime).split("").map((concatTime) => {
         return Number(concatTime);
@@ -70,7 +87,7 @@ function renderWatch(l) {
     drawLDigit(chars[2], 2, leftBarsStartY);
     drawLDigit(chars[3], 3, leftBarsStartY);
 
-    g.drawString(getStepCount(), startOffsetX + checkBarWidth + 3, startOffsetY + 4);
+    g.drawString(getIntervalStepCount(), startOffsetX + checkBarWidth + 3, startOffsetY + 4);
     g.drawString(concatTime.substring(0,4), startOffsetX + checkBarWidth + 3, startOffsetY + textBarHeight + digitBarHeight + 6);
 
     drawCheckBar(midBarOffsetX, midBarOffsetY);
@@ -80,7 +97,7 @@ function renderWatch(l) {
     drawRDigit(chars[6], 2, rightBarsStartY);
     drawRDigit(checkSum, 3, rightBarsStartY);
 
-    g.drawString(Bangle.getStepCount(), midBarOffsetX + checkBarWidth + 3, startOffsetY + 4);
+    g.drawString(getAccumulatedStepCount(), midBarOffsetX + checkBarWidth + 3, startOffsetY + 4);
     g.drawString(concatTime.substring(4), midBarOffsetX + checkBarWidth + 3, startOffsetY + textBarHeight + digitBarHeight + 6);
 
     drawCheckBar(endBarOffsetX, endBarOffsetY);
@@ -376,17 +393,45 @@ function calculateChecksum(digits) {
     return checkSum;
 }
 
-function storeStepCount() {
-    settings.stepCount = Bangle.getStepCount();
-    writeSettings();
+/* Returns the total amount of steps, since the clock was installed */
+function getTotalStepCount() {
+    if(settings.totalStepCount > getBangleStepCount()) {
+        return settings.totalStepCount + getBangleStepCount();
+    }
+    return getBangleStepCount();
 }
 
-function getStepCount() {
-    let accumulatedSteps = Bangle.getStepCount();
-    if(accumulatedSteps <= settings.stepCount) {
+/* Returns the accumulated amount of steps */
+function getAccumulatedStepCount() {
+    let bangleSteps = getBangleStepCount();
+    let resetAccumulatedBangleSteps = settings.resetAccumulatedBangleStepCount;
+
+    if(bangleSteps < settings.bangleStepCount) {
+        settings.bangleStepCount = bangleSteps;
+    }
+
+    if(bangleSteps > settings.bangleStepCount) {
+        settings.accumulatedBangleStepCount += (bangleSteps - settings.bangleStepCount);
+    }
+
+    if(resetAccumulatedBangleSteps > 0) {
+        if(resetAccumulatedBangleSteps <= bangleSteps) {
+            return bangleSteps - resetAccumulatedBangleSteps;
+        }
+    }
+    return bangleSteps;
+}
+
+/* Returns the number of steps, since the last automatic reset */
+function getIntervalStepCount() {
+    if(getBangleStepCount() <= settings.resetIntervalStepCount) {
         return 0;
     }
-    return accumulatedSteps - settings.stepCount;
+    return getBangleStepCount() - settings.resetIntervalStepCount;
+}
+
+function getBangleStepCount() {
+    return Bangle.getStepCount();
 }
 
 function resetAtMidnight() {
@@ -400,8 +445,9 @@ function resetAtMidnight() {
     let msToMidnight = night.getTime() - now.getTime();
 
     setTimeout(function() {
-        storeStepCount();              //      <-- This is the function being called at midnight.
-        resetAtMidnight();    //      Then, reset again next midnight.
+        settings.intervalResetStepCount = getBangleStepCount(); //<-- This is the function being called at midnight.
+        writeSettings();
+        resetAtMidnight(); //Then, reset again next midnight.
     }, msToMidnight);
 }
 
@@ -430,4 +476,16 @@ Bangle.on('lock', function(locked) {
     if(!locked) {
         layout.render();
     }
+});
+
+// Store the currently accumulated stepcount when bangle shuts down
+E.on('kill', function() {
+    settings.bangleStepCount = getBangleStepCount();
+    settings.totalStepCount = getTotalStepCount();
+    writeSettings();
+});
+// Store the date of bangle boot (for reporting uptime in settings)
+E.on('init', function() {
+    settings.lastBoot = new Date().getTime();
+    writeSettings();
 });
