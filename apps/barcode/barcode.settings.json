@@ -3,7 +3,9 @@
   "bangleStepCount": 0,
   "intervalResetDays": 1,
   "resetIntervalStepCount": 0,
-  "accumulatedBangleStepCount": 0,
+  "currentBangleStepCount": 0,
   "resetAccumulatedBangleStepCount": 0,
-  "totalStepCount": 0
+  "totalStepCount": 0,
+  "intervalStepCountLimit": 10000,
+  "intervalStepGoal": 10000
 }

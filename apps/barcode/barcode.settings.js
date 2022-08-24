@@ -6,17 +6,19 @@
         bangleStepCount: 0,
         intervalResetDays: 1,
         resetIntervalStepCount: 0,
-        accumulatedBangleStepCount: 0,
+        currentBangleStepCount: 0,
         resetAccumulatedBangleStepCount: 0,
         totalStepCount: 0,
+        intervalStepCountLimit: 10000,
+        intervalStepGoal: 10000,
     }, require('Storage').readJSON(FILE, true) || {});
     if(settings.lastBoot === undefined) settings.lastBoot = 0;
     if(settings.bangleStepCount === undefined) settings.bangleStepCount = 0;
     if(settings.intervalResetDays === undefined) settings.intervalResetDays = 1;
 
-    if(settings.resetIntervalStepCount === undefined) settings.resetIntervalResetStepCount = 0;
+    if(settings.resetIntervalStepCount === undefined) settings.resetIntervalStepCount = 0;
 
-    if(settings.accumulatedBangleStepCount === undefined) settings.accumulatedStepCount = 0;
+    if(settings.currentBangleStepCount === undefined) settings.currentBangleStepCount = 0;
     if(settings.resetAccumulatedBangleStepCount === undefined) settings.accumulatedResetStepCount = 0;
 
     if(settings.totalStepCount === undefined) settings.totalStepCount = 0;
@@ -34,40 +36,28 @@
         "" : { "title" : "Barcode dashboard" },
         "< Back" : () => back(),
 
-        'Uptime (days)': {
-            value: lastRebootInDays,
-        },
-        'Reset uptime': () => {
-            settings.lastBoot = now;
-            writeSettings();
-        },
-
-        // Days before step reset (interval)
-        'Reset interval (days)': {
-            value: 1,  // 1 | converts undefined to 1
-            onchange: v => {
-                settings.intervalResetDays = v;
+        'Step goal': {
+            value: settings.intervalStepGoal,
+            step: 1000,
+            onchange: val => {
+                settings.intervalStepGoal = settings.intervalStepCountLimit = val;
                 writeSettings();
             }
         },
 
-        // Accumulated Bangle.getStepCount()
-        'Accumulated Bangle step count (since reset)': {
-            value: 0 | settings.accumulatedBangleStepCount - settings.resetAccumulatedBangleStepCount,
-        },
-        'Reset accumulated Bangle step count': () => {
-            settings.resetAccumulatedBangleStepCount = settings.accumulatedBangleStepCount;
-            writeSettings();
-        },
-
-        // Accumulated Bangle.getStepCount()
-        'Bangle step count': {
-            value: 0 | settings.bangleStepCount,
+        // Current Bangle.getStepCount()
+        'BSC now': {
+            value: 0 | Bangle.getStepCount(),
         },
 
         // Total stepcount since app launched first time
-        'Step count (since 1st launch)': {
+        'BSC total': {
             value: 0 | settings.totalStepCount,
+        },
+
+        // Total stepcount since app launched first time
+        'RISC': {
+            value: 0 | settings.resetIntervalStepCount,
         },
     });
 })

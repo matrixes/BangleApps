@@ -15,5 +15,5 @@
   "supports" : ["BANGLEJS2"],
   "tags": "barcode,ean,ean-8,watchface,clock,clockface",
   "type": "clock",
-  "version":"0.10"
+  "version":"0.11"
 }

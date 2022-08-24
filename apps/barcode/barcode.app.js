@@ -46,6 +46,8 @@ let settings = Object.assign({
     accumulatedBangleStepCount: 0,
     resetAccumulatedBangleStepCount: 0,
     totalStepCount: 0,
+    intervalStepCountLimit: 10000,
+    intervalStepGoal: 10000,
 }, require('Storage').readJSON(FILE, true) || {});
 if(settings.lastBoot === undefined) settings.lastBoot = 0;
 if(settings.bangleStepCount === undefined) settings.bangleStepCount = 0;
@@ -60,6 +62,8 @@ if(settings.totalStepCount === undefined) settings.totalStepCount = 0;
 let intCaster = num => Number(num);
 
 let drawTimeout;
+
+let previousBangleStepCount = Bangle.getStepCount();
 
 function renderWatch(l) {
     g.setFont("4x6",2);
@@ -77,6 +81,17 @@ function renderWatch(l) {
     });
     const checkSum = calculateChecksum(chars);
     concatTime += checkSum;
+    let intervalStepCount = getIntervalStepCount();
+    let intervalStepCountAssessment = intervalStepCount / settings.intervalStepCountLimit;
+
+    console.log(intervalStepCount, intervalStepCountAssessment, settings.intervalStepCountLimit);
+    if(intervalStepCountAssessment >= 1) {
+        require("buzz").pattern(",,.==");
+        settings.intervalStepCountLimit += settings.intervalStepGoal;
+        writeSettings();
+    }
+
+    calculateTotalStepCount();
 
     drawCheckBar(startBarOffsetX, startBarOffsetY);
 
@@ -85,7 +100,7 @@ function renderWatch(l) {
     drawLDigit(chars[2], 2, leftBarsStartY);
     drawLDigit(chars[3], 3, leftBarsStartY);
 
-    g.drawString(getIntervalStepCount(), startOffsetX + checkBarWidth + 3, startOffsetY + 4);
+    g.drawString(intervalStepCount, startOffsetX + checkBarWidth + 3, startOffsetY + 4);
     g.drawString(concatTime.substring(0,4), startOffsetX + checkBarWidth + 3, startOffsetY + textBarHeight + digitBarHeight + 6);
 
     drawCheckBar(midBarOffsetX, midBarOffsetY);
@@ -95,7 +110,7 @@ function renderWatch(l) {
     drawRDigit(chars[6], 2, rightBarsStartY);
     drawRDigit(checkSum, 3, rightBarsStartY);
 
-    g.drawString(getAccumulatedStepCount(), midBarOffsetX + checkBarWidth + 3, startOffsetY + 4);
+    g.drawString(settings.totalStepCount, midBarOffsetX + checkBarWidth + 3, startOffsetY + 4);
     g.drawString(concatTime.substring(4), midBarOffsetX + checkBarWidth + 3, startOffsetY + textBarHeight + digitBarHeight + 6);
 
     drawCheckBar(endBarOffsetX, endBarOffsetY);
@@ -391,18 +406,21 @@ function calculateChecksum(digits) {
     return checkSum;
 }
 
-/* Returns the total amount of steps, since the clock was installed */
-function getTotalStepCount() {
-    if(settings.totalStepCount > getBangleStepCount()) {
-        return settings.totalStepCount + getBangleStepCount();
-    }
-    return getBangleStepCount();
+/* Calculates and sets the total amount of steps, since the clock was installed */
+function calculateTotalStepCount() {
+    let bangleStepCount = Bangle.getStepCount();
+    let bangleStepCountDiff = bangleStepCount - previousBangleStepCount;
+    // If the diff is a negative value, the Bangle.getStepCount() was probably reset, which may result in wrong calculations
+    settings.totalStepCount += bangleStepCountDiff > 0 ? bangleStepCountDiff : 0;
+    previousBangleStepCount = bangleStepCount;
 }
 
 /* Returns the accumulated amount of steps */
 function getAccumulatedStepCount() {
     let bangleSteps = getBangleStepCount();
     let resetAccumulatedBangleSteps = settings.resetAccumulatedBangleStepCount;
+
+    settings.currentBangleStepCount = bangleSteps;
 
     if(bangleSteps < settings.bangleStepCount) {
         settings.bangleStepCount = bangleSteps;
@@ -422,14 +440,11 @@ function getAccumulatedStepCount() {
 
 /* Returns the number of steps, since the last automatic reset */
 function getIntervalStepCount() {
-    if(getBangleStepCount() <= settings.resetIntervalStepCount) {
+    let bangleStepCount = Bangle.getStepCount();
+    if(bangleStepCount <= settings.resetIntervalStepCount) {
         return 0;
     }
-    return getBangleStepCount() - settings.resetIntervalStepCount;
-}
-
-function getBangleStepCount() {
-    return Bangle.getStepCount();
+    return bangleStepCount - settings.resetIntervalStepCount;
 }
 
 function resetAtMidnight() {
@@ -443,7 +458,8 @@ function resetAtMidnight() {
     let msToMidnight = night.getTime() - now.getTime();
 
     setTimeout(function() {
-        settings.resetIntervalStepCount = getBangleStepCount(); //<-- This is the function being called at midnight.
+        settings.resetIntervalStepCount = Bangle.getStepCount(); //<-- This is the function being called at midnight.
+        settings.intervalStepCountLimit = settings.intervalStepGoal;
         writeSettings();
         resetAtMidnight(); //Then, reset again next midnight.
     }, msToMidnight);
@@ -478,12 +494,5 @@ Bangle.on('lock', function(locked) {
 
 // Store the currently accumulated stepcount when bangle shuts down
 E.on('kill', function() {
-    settings.bangleStepCount = getBangleStepCount();
-    settings.totalStepCount = getTotalStepCount();
-    writeSettings();
-});
-// Store the date of bangle boot (for reporting uptime in settings)
-E.on('init', function() {
-    settings.lastBoot = new Date().getTime();
     writeSettings();
 });
